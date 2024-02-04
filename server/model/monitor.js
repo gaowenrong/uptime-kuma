@@ -173,6 +173,10 @@ class Monitor extends BeanModel {
                 oauth_token_url: this.oauth_token_url,
                 oauth_scopes: this.oauth_scopes,
                 oauth_auth_method: this.oauth_auth_method,
+                custom_auth_url: this.custom_auth_url,
+                custom_auth_param: this.custom_auth_param,
+                custom_auth_data: this.custom_auth_data,
+                custom_auth_token: this.custom_auth_token,
                 pushToken: this.pushToken,
                 databaseConnectionString: this.databaseConnectionString,
                 radiusUsername: this.radiusUsername,
@@ -438,6 +442,30 @@ class Monitor extends BeanModel {
                             oauth2AuthHeader = {
                                 "Authorization": this.oauthAccessToken.token_type + " " + this.oauthAccessToken.access_token,
                             };
+                        } catch (e) {
+                            throw new Error("The oauth config is invalid. " + e.message);
+                        }
+                    }
+                    if (this.auth_method === "custom") {
+                        try {
+                            if (this.custom_auth_token === undefined) {
+                                this.custom_auth_token = await this.makeCustomTokenRequest();
+                            }
+                            log.info("this.auth_method === custom", `[${this.name}] token: ${typeof(this.custom_auth_token)}`);
+                            log.info("this.auth_method === custom", `[${this.name}] token: ${this.custom_auth_token}`);
+                            const decoded = jwt.decode(this.custom_auth_token);
+                            if (decoded) {
+                                const expDate = new Date(decoded.exp * 1000);
+                                if (expDate <= new Date()) {
+                                    this.custom_auth_token = await this.makeCustomTokenRequest();
+                                }
+                            } else {
+                                throw new Error("Failed to decode accessToken.");
+                            }
+                            oauth2AuthHeader = {
+                                "Authorization": "Bearer " + this.custom_auth_token,
+                            };
+                            log.info("this.auth_method === custom", `[${this.name}] token: ${this.oauth2AuthHeader}`);
                         } catch (e) {
                             throw new Error("The oauth config is invalid. " + e.message);
                         }
@@ -1609,6 +1637,36 @@ class Monitor extends BeanModel {
         }
 
         return oAuthAccessToken;
+    }
+
+    /**
+     * get custom token
+     * @returns {string} token
+     */
+    async makeCustomTokenRequest() {
+        try {
+            // 使用动态参数发送 POST 请求
+            const response = await axios.post(this.custom_auth_url, JSON.parse(this.custom_auth_param));
+            log.info("makeCustomTokenRequest-----", `[${this.name}] response: ${response}`);
+            const tokenPath = this.custom_auth_data.split("."); // 将路径分割成数组
+            let token = response.data;
+            for (const key of tokenPath) {
+                token = token[key];
+                if (token === undefined) {
+                    throw new Error("Token path is invalid.");
+                }
+            }
+            // 返回解析到的令牌
+            log.info("makeCustomTokenRequest", `[${this.name}] token: ${token}`);
+            if (typeof token === "string" && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            return token;
+        } catch (error) {
+            // 处理请求或解析中的错误
+            console.error("Error fetching custom token:", error);
+            throw error; // 可以选择重新抛出错误或返回一个错误标志
+        }
     }
 
 }

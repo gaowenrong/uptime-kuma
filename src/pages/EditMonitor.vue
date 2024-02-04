@@ -751,6 +751,9 @@
                                         <option value="mtls">
                                             mTLS
                                         </option>
+                                        <option value="custom">
+                                            自定义获取token
+                                        </option>
                                     </select>
                                 </div>
                                 <template v-if="monitor.authMethod && monitor.authMethod !== null ">
@@ -798,6 +801,20 @@
                                                 <input id="oauth_scopes" v-model="monitor.oauth_scopes" type="text" class="form-control" :placeholder="$t('Optional: Space separated list of scopes')">
                                             </div>
                                         </template>
+                                    </template>
+                                    <template v-else-if="monitor.authMethod === 'custom' ">
+                                        <div class="my-3">
+                                            <label for="custom-url" class="form-label">URL</label>
+                                            <input id="custom-url" v-model="monitor.custom_auth_url" type="text" class="form-control">
+                                        </div>
+                                        <div class="my-3">
+                                            <label for="custom-param" class="form-label">post param</label>
+                                            <textarea id="custom-param" v-model="monitor.custom_auth_param" class="form-control"></textarea>
+                                        </div>
+                                        <div class="my-3">
+                                            <label for="custom-data" class="form-label">token str of data</label>
+                                            <input id="custom-data" v-model="monitor.custom_auth_data" type="text" class="form-control">
+                                        </div>
                                     </template>
                                     <template v-else>
                                         <div class="my-3">
